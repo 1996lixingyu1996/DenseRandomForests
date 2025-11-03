@@ -1,7 +1,7 @@
 Dense Random Forest for Subgroup Analysis
 ================
 
-This vignette demonstrates how to use the dense random forest method for
+This file demonstrates how to use the dense random forest method for
 subgroup analysis. The Amgen Study 309 is used here as an illustrative
 example.
 
