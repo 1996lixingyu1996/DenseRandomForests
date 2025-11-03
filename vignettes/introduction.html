@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Dense Random Forest for Subgroup Analysis</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Dense Random Forest for Subgroup
+Analysis</h1>
+
+
+
+<p>This vignette demonstrates how to use the dense random forest method
+for subgroup analysis. The Amgen Study 309 is used here as an
+illustrative example.</p>
+<p>Dense Random Forests (DRF) extend traditional random forests by
+incorporating a model-based splitting criterion, enabling efficient
+subgroup discovery in survival settings.</p>
+<div id="set-training-parameters" class="section level3">
+<h3>Set training parameters</h3>
+<p>Splitting rule for dense random forests.</p>
+<p>Fit cox model in each splitting, <span class="math display">\[h(t|M,W) = h_0(t)\times \exp\{\gamma_1 V+\gamma_2
+W+\gamma_3 V\times W\}\]</span></p>
+<p>them, the splitting rule is: <span class="math display">\[G(s) =
+\omega_1 \times (a_1-0.5)/2+ (1 - \omega_1)\times
+(a_2/\omega_2)\]</span> where <span class="math inline">\(\omega_1\)</span> is the weight parameter, <span class="math inline">\(\omega_2\)</span> is the den parameter. <span class="math inline">\(a_1\)</span> is the C-Index, <span class="math inline">\(a_2\)</span> is the Z score of <span class="math inline">\(\gamma_3\)</span> in the Cox model.</p>
+<p>mtry:Number of candidate variables randomly selected at each
+split,</p>
+<p>ntree:Number of trees to grow,</p>
+<p>nsplit:Number of random split points per variable,</p>
+<p>nodesize:Minimum terminal node size,</p>
+<p>nodedepth:Maximum tree depth,</p>
+<p>den_util: den parameter, please use <span class="math inline">\(3.5\)</span> as default value,</p>
+<p>weight_util: weight parameter.</p>
+<p>For more information, see the help documentation.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>mtry_list <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>ntree <span class="ot">=</span> <span class="dv">500</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>nsplit <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="dv">30</span>, <span class="dv">40</span>) </span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>nodesize <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">50</span>, <span class="dv">70</span>, <span class="dv">100</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>nodedepth <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>den_util <span class="ot">=</span> <span class="fl">3.5</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>weight_util <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">30</span>, <span class="dv">40</span>, <span class="dv">50</span>)</span></code></pre></div>
+<p>Then, combine these parameters as the combinatons,</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>para_list <span class="ot">=</span> base<span class="sc">::</span><span class="fu">expand.grid</span>(mtry_list, ntree, nodesize, nodedepth, nsplit, den_util, weight_util)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">colnames</span>(para_list) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;mtry&quot;</span>, <span class="st">&quot;ntree&quot;</span>, <span class="st">&quot;nodesize&quot;</span>, <span class="st">&quot;nodedepth&quot;</span>, <span class="st">&quot;nsplit&quot;</span>, <span class="st">&quot;den_util&quot;</span>, <span class="st">&quot;weight_util&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>df <span class="ot">=</span> para_list</span></code></pre></div>
+</div>
+<div id="here-we-train-the-random-forest-with-the-above-parameters.-the-following-function-can-use-parallel-technique." class="section level2">
+<h2>Here we train the random forest with the above parameters. The
+following function can use parallel technique.</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>f_simulation <span class="ot">&lt;-</span> <span class="cf">function</span>(i){</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="fu">options</span>(<span class="at">rf.cores=</span><span class="dv">1</span>, <span class="at">mc.cores =</span> <span class="dv">1</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  </span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  study_id <span class="ot">=</span> <span class="st">&quot;309&quot;</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  </span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="do">### the path is used to save membership matrix</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  result_save_path <span class="ot">=</span> <span class="st">&quot;&quot;</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  </span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="cf">if</span>(<span class="sc">!</span><span class="fu">dir.exists</span>(result_save_path)){ <span class="fu">dir.create</span>(result_save_path)}</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  </span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  result_folder_path <span class="ot">=</span> <span class="fu">paste0</span>(result_save_path, <span class="st">&quot;/&quot;</span>, study_id)</span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="cf">if</span>(<span class="sc">!</span><span class="fu">dir.exists</span>(result_folder_path)){ <span class="fu">dir.create</span>(result_folder_path)}</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>  </span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>  <span class="do">### load data</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>  <span class="fu">data</span>(crc_adsl, <span class="at">package =</span> <span class="st">&quot;randomForestSRC&quot;</span>)</span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>  dat <span class="ot">&lt;-</span> base<span class="sc">::</span><span class="fu">subset</span>(crc_adsl, crc_adsl<span class="sc">$</span>StudyID<span class="sc">==</span>study_id)</span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>  dat <span class="ot">&lt;-</span> dat[<span class="sc">!</span><span class="fu">is.na</span>(dat<span class="sc">$</span>B_ECOG),]</span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>  dat <span class="ot">&lt;-</span> dat[<span class="sc">!</span><span class="fu">is.na</span>(dat<span class="sc">$</span>KRAS),]</span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>  dat <span class="ot">&lt;-</span> dat[<span class="sc">!</span><span class="fu">is.na</span>(dat<span class="sc">$</span>AGE),]</span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>  dat<span class="sc">$</span>TRT <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(dat<span class="sc">$</span>TRT)</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>  data <span class="ot">&lt;-</span> dat[, <span class="fu">c</span>(<span class="st">&quot;SUBJID&quot;</span>,<span class="st">&quot;OS&quot;</span>,<span class="st">&quot;OSevent&quot;</span>,<span class="st">&quot;KRAS&quot;</span>, <span class="st">&quot;AGE&quot;</span>, <span class="st">&quot;TRT&quot;</span>, <span class="st">&quot;B_ECOG&quot;</span>, <span class="st">&quot;ARM&quot;</span>, <span class="st">&quot;PFS&quot;</span>, <span class="st">&quot;PFSevent&quot;</span>)]  <span class="co"># TRT equals ARM</span></span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>  train.data <span class="ot">=</span> data[, <span class="fu">c</span>(<span class="st">&quot;SUBJID&quot;</span>, <span class="st">&quot;OS&quot;</span>, <span class="st">&quot;OSevent&quot;</span>, <span class="st">&quot;KRAS&quot;</span>, <span class="st">&quot;AGE&quot;</span>, <span class="st">&quot;B_ECOG&quot;</span>, <span class="st">&quot;TRT&quot;</span>, <span class="st">&quot;PFS&quot;</span>, <span class="st">&quot;PFSevent&quot;</span>,<span class="st">&quot;ARM&quot;</span>)]</span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>  </span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>  train.data<span class="sc">$</span>TRT <span class="ot">=</span> <span class="fu">ifelse</span>(train.data<span class="sc">$</span>TRT <span class="sc">==</span> <span class="st">&quot;FOLFOX alone&quot;</span>, <span class="at">yes =</span> <span class="dv">0</span>, <span class="at">no =</span> <span class="dv">1</span>)</span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>  train.data<span class="sc">$</span>TRT <span class="ot">=</span> <span class="fu">as.factor</span>(train.data<span class="sc">$</span>TRT)</span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>  train.data<span class="sc">$</span>KRAS <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(train.data<span class="sc">$</span>KRAS)</span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a>  train.data<span class="sc">$</span>B_ECOG <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(train.data<span class="sc">$</span>B_ECOG)</span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a>  train.data <span class="ot">=</span> <span class="fu">filter</span>(train.data,B_ECOG <span class="sc">==</span> <span class="st">&quot;1&quot;</span><span class="sc">|</span> B_ECOG <span class="sc">==</span> <span class="st">&quot;0&quot;</span>)</span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a>  train.data<span class="sc">$</span>B_ECOG <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(train.data<span class="sc">$</span>B_ECOG)</span>
+<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a>  x_name <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;KRAS&quot;</span>,<span class="st">&quot;B_ECOG&quot;</span>, <span class="st">&quot;AGE&quot;</span>)</span>
+<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a> </span>
+<span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a>  df <span class="ot">=</span> para_list    </span>
+<span id="cb3-33"><a href="#cb3-33" tabindex="-1"></a></span>
+<span id="cb3-34"><a href="#cb3-34" tabindex="-1"></a>  data.tmp <span class="ot">=</span> train.data</span>
+<span id="cb3-35"><a href="#cb3-35" tabindex="-1"></a>  </span>
+<span id="cb3-36"><a href="#cb3-36" tabindex="-1"></a>  <span class="co"># train model</span></span>
+<span id="cb3-37"><a href="#cb3-37" tabindex="-1"></a>  para.mtry <span class="ot">=</span> df[i, <span class="st">&quot;mtry&quot;</span>]</span>
+<span id="cb3-38"><a href="#cb3-38" tabindex="-1"></a>  para.ntree <span class="ot">=</span> df[i, <span class="st">&quot;ntree&quot;</span>]</span>
+<span id="cb3-39"><a href="#cb3-39" tabindex="-1"></a>  para.nodesize <span class="ot">=</span> df[i, <span class="st">&quot;nodesize&quot;</span>]</span>
+<span id="cb3-40"><a href="#cb3-40" tabindex="-1"></a>  para.nodedepth <span class="ot">=</span> df[i, <span class="st">&quot;nodedepth&quot;</span>]</span>
+<span id="cb3-41"><a href="#cb3-41" tabindex="-1"></a>  para.nsplit <span class="ot">=</span> df[i, <span class="st">&quot;nsplit&quot;</span>]</span>
+<span id="cb3-42"><a href="#cb3-42" tabindex="-1"></a>  para.den_util <span class="ot">=</span> df[i, <span class="st">&quot;den_util&quot;</span>]</span>
+<span id="cb3-43"><a href="#cb3-43" tabindex="-1"></a>  para.weight_util <span class="ot">=</span> df[i, <span class="st">&quot;weight_util&quot;</span>]</span>
+<span id="cb3-44"><a href="#cb3-44" tabindex="-1"></a>  para.seed <span class="ot">=</span> <span class="dv">1</span>  </span>
+<span id="cb3-45"><a href="#cb3-45" tabindex="-1"></a>  <span class="cf">if</span>(para.nodedepth <span class="sc">==</span> <span class="dv">0</span>)</span>
+<span id="cb3-46"><a href="#cb3-46" tabindex="-1"></a>  {</span>
+<span id="cb3-47"><a href="#cb3-47" tabindex="-1"></a>    para.nodedepth <span class="ot">=</span> <span class="cn">NULL</span></span>
+<span id="cb3-48"><a href="#cb3-48" tabindex="-1"></a>  }</span>
+<span id="cb3-49"><a href="#cb3-49" tabindex="-1"></a>    <span class="do">## train random forests with different parameter set up</span></span>
+<span id="cb3-50"><a href="#cb3-50" tabindex="-1"></a>    rf.object <span class="ot">=</span> <span class="fu">tryCatch</span>(<span class="at">expr =</span> {<span class="fu">rfsrc</span>(<span class="fu">Surv</span>(OS, OSevent)<span class="sc">~</span>KRAS<span class="sc">+</span>B_ECOG<span class="sc">+</span>AGE, </span>
+<span id="cb3-51"><a href="#cb3-51" tabindex="-1"></a>                                             <span class="at">data =</span> data.tmp, <span class="at">ntree =</span> para.ntree,</span>
+<span id="cb3-52"><a href="#cb3-52" tabindex="-1"></a>                                             <span class="at">nodesize =</span> para.nodesize, </span>
+<span id="cb3-53"><a href="#cb3-53" tabindex="-1"></a>                                             <span class="at">nodedepth =</span> para.nodedepth, </span>
+<span id="cb3-54"><a href="#cb3-54" tabindex="-1"></a>                                             <span class="at">mtry=</span>para.mtry, </span>
+<span id="cb3-55"><a href="#cb3-55" tabindex="-1"></a>                                             <span class="at">nsplit =</span> para.nsplit, <span class="at">splitrule =</span> <span class="st">&quot;custom5&quot;</span>, </span>
+<span id="cb3-56"><a href="#cb3-56" tabindex="-1"></a>                                             <span class="at">block.size =</span> <span class="cn">NULL</span>, <span class="at">statistics =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb3-57"><a href="#cb3-57" tabindex="-1"></a>                                             <span class="at">forest =</span> <span class="cn">TRUE</span>, <span class="at">membership =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb3-58"><a href="#cb3-58" tabindex="-1"></a>                                             <span class="at">weight_util =</span> (para.weight_util<span class="sc">/</span><span class="dv">100</span>), </span>
+<span id="cb3-59"><a href="#cb3-59" tabindex="-1"></a>                                             <span class="at">den_util =</span> para.den_util, </span>
+<span id="cb3-60"><a href="#cb3-60" tabindex="-1"></a>                                             <span class="at">treatment =</span> data.tmp<span class="sc">$</span>TRT,</span>
+<span id="cb3-61"><a href="#cb3-61" tabindex="-1"></a>                                             <span class="at">xvar.wt =</span> xvar_weight, <span class="at">var.used =</span> <span class="st">&quot;all.trees&quot;</span>)},</span>
+<span id="cb3-62"><a href="#cb3-62" tabindex="-1"></a>                               <span class="at">error =</span> <span class="cf">function</span>(e){<span class="dv">0</span>})</span>
+<span id="cb3-63"><a href="#cb3-63" tabindex="-1"></a>    </span>
+<span id="cb3-64"><a href="#cb3-64" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">is.list</span>(rf.object)){</span>
+<span id="cb3-65"><a href="#cb3-65" tabindex="-1"></a>      arg <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">na.action=</span><span class="st">&quot;na.impute&quot;</span>, <span class="at">prox.dist.type=</span><span class="st">&quot;all&quot;</span>)</span>
+<span id="cb3-66"><a href="#cb3-66" tabindex="-1"></a>      rf.object.predict <span class="ot">&lt;-</span> <span class="fu">predict.rfsrc</span>(<span class="at">object=</span>rf.object, </span>
+<span id="cb3-67"><a href="#cb3-67" tabindex="-1"></a>                                               <span class="at">newdata=</span>data.tmp, </span>
+<span id="cb3-68"><a href="#cb3-68" tabindex="-1"></a>                                               <span class="at">na.action =</span> arg<span class="sc">$</span>na.action, </span>
+<span id="cb3-69"><a href="#cb3-69" tabindex="-1"></a>                                               <span class="at">membership=</span><span class="cn">TRUE</span>, <span class="at">proximity =</span> <span class="cn">FALSE</span>, </span>
+<span id="cb3-70"><a href="#cb3-70" tabindex="-1"></a>                                               <span class="at">treatment_flag =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-71"><a href="#cb3-71" tabindex="-1"></a>      predict_membership <span class="ot">=</span> rf.object.predict<span class="sc">$</span>membership</span>
+<span id="cb3-72"><a href="#cb3-72" tabindex="-1"></a>      membership_save_path <span class="ot">=</span> <span class="fu">paste0</span>(result_folder_path, <span class="st">&quot;/&quot;</span>,</span>
+<span id="cb3-73"><a href="#cb3-73" tabindex="-1"></a>                                    <span class="st">&quot;para_id_&quot;</span>, i, <span class="st">&quot;_mtry_&quot;</span>, para.mtry,</span>
+<span id="cb3-74"><a href="#cb3-74" tabindex="-1"></a>                                    <span class="st">&quot;_ntree_&quot;</span>, para.ntree, <span class="st">&quot;_nodesize_&quot;</span>,</span>
+<span id="cb3-75"><a href="#cb3-75" tabindex="-1"></a>                                    para.nodesize, <span class="st">&quot;_nsplit_&quot;</span>,</span>
+<span id="cb3-76"><a href="#cb3-76" tabindex="-1"></a>                                    para.nsplit, <span class="st">&quot;para_weight_util_&quot;</span>,</span>
+<span id="cb3-77"><a href="#cb3-77" tabindex="-1"></a>                                    para.weight_util, <span class="st">&quot;_nodedepth_&quot;</span>,</span>
+<span id="cb3-78"><a href="#cb3-78" tabindex="-1"></a>                                    para.nodedepth, <span class="st">&quot;.csv&quot;</span>)</span>
+<span id="cb3-79"><a href="#cb3-79" tabindex="-1"></a>      </span>
+<span id="cb3-80"><a href="#cb3-80" tabindex="-1"></a>      rio<span class="sc">::</span><span class="fu">export</span>(predict_membership, membership_save_path)</span>
+<span id="cb3-81"><a href="#cb3-81" tabindex="-1"></a>      base<span class="sc">::</span><span class="fu">rm</span>(rf.object)</span>
+<span id="cb3-82"><a href="#cb3-82" tabindex="-1"></a>      base<span class="sc">::</span><span class="fu">rm</span>(rf.object.predict)</span>
+<span id="cb3-83"><a href="#cb3-83" tabindex="-1"></a>      base<span class="sc">::</span><span class="fu">rm</span>(predict_membership)</span>
+<span id="cb3-84"><a href="#cb3-84" tabindex="-1"></a>      base<span class="sc">::</span><span class="fu">rm</span>(membership_save_path)</span>
+<span id="cb3-85"><a href="#cb3-85" tabindex="-1"></a>    }</span>
+<span id="cb3-86"><a href="#cb3-86" tabindex="-1"></a>    </span>
+<span id="cb3-87"><a href="#cb3-87" tabindex="-1"></a>  }</span></code></pre></div>
+</div>
+<div id="calculate-membership-by-random-forest-with-custom5-splitting-rule" class="section level2">
+<h2>calculate membership by random forest with custom5 splitting
+rule</h2>
+<p>It can be calculated in parallel.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">dim</span>(df)[<span class="dv">1</span>]){</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="fu">f_simulation</span>(i)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="combine-memberships." class="section level2">
+<h2>combine memberships.</h2>
+<p>This code is used to combine membership matrix from the above the
+step. The inputs are a series of membership matrix, the output is the
+ensembled membership. (The outputs are too big, so the example only show
+codes.)</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>folder_path <span class="ot">=</span> <span class="st">&quot;&quot;</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>membership <span class="ot">=</span> <span class="cn">NULL</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="do">## combine all membership matrix</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">dim</span>(df)[<span class="dv">1</span>]){</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  para.mtry <span class="ot">=</span> df[i, <span class="st">&quot;mtry&quot;</span>]</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  para.ntree <span class="ot">=</span> df[i, <span class="st">&quot;ntree&quot;</span>]</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  para.nodesize <span class="ot">=</span> df[i, <span class="st">&quot;nodesize&quot;</span>]</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  para.nodedepth <span class="ot">=</span> df[i, <span class="st">&quot;nodedepth&quot;</span>]</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>  para.nsplit <span class="ot">=</span> df[i, <span class="st">&quot;nsplit&quot;</span>]</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  para.den_util <span class="ot">=</span> df[i, <span class="st">&quot;den_util&quot;</span>]</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  para.weight_util <span class="ot">=</span> df[i, <span class="st">&quot;weight_util&quot;</span>]</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  para.seed <span class="ot">=</span> <span class="dv">1</span>  </span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>){</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>    membership_save_path <span class="ot">=</span> <span class="fu">paste0</span>(folder_path, <span class="st">&quot;/&quot;</span>,</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>                                  <span class="st">&quot;para_id_&quot;</span>, i, <span class="st">&quot;_mtry_&quot;</span>, para.mtry,</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>                                  <span class="st">&quot;_ntree_&quot;</span>, para.ntree, <span class="st">&quot;_nodesize_&quot;</span>,</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>                                  para.nodesize, <span class="st">&quot;_nsplit_&quot;</span>,</span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>                                  para.nsplit, <span class="st">&quot;para_weight_util_&quot;</span>,</span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>                                  para.weight_util, <span class="st">&quot;_nodedepth_&quot;</span>,</span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>                                  para.nodedepth, <span class="st">&quot;.csv&quot;</span>)</span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>    </span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>    membership_tmp <span class="ot">=</span> rio<span class="sc">::</span><span class="fu">import</span>(membership_save_path)</span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>    membership <span class="ot">=</span> <span class="fu">rbind.data.frame</span>(membership, membership_tmp)</span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>  }</span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="compute-proximity-from-membership" class="section level2">
+<h2>compute proximity from membership</h2>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>proximity <span class="ot">=</span> <span class="fu">rfsrc_compute_proximity</span>(<span class="at">membership =</span> membership, <span class="at">inbag=</span><span class="cn">NULL</span>, <span class="at">oob=</span><span class="st">&#39;ALL&#39;</span>)</span></code></pre></div>
+</div>
+<div id="here-we-load-the-pre-computed-proximity." class="section level2">
+<h2>Here, we load the pre-computed proximity.</h2>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">data</span>(proximity, <span class="at">package =</span> <span class="st">&quot;randomForestSRC&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>study_id <span class="ot">=</span> <span class="st">&quot;309&quot;</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">data</span>(crc_adsl, <span class="at">package =</span> <span class="st">&quot;randomForestSRC&quot;</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>dat <span class="ot">&lt;-</span> base<span class="sc">::</span><span class="fu">subset</span>(crc_adsl, crc_adsl<span class="sc">$</span>StudyID<span class="sc">==</span>study_id)</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>dat <span class="ot">&lt;-</span> dat[<span class="sc">!</span><span class="fu">is.na</span>(dat<span class="sc">$</span>B_ECOG),]</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>dat <span class="ot">&lt;-</span> dat[<span class="sc">!</span><span class="fu">is.na</span>(dat<span class="sc">$</span>KRAS),]</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>dat <span class="ot">&lt;-</span> dat[<span class="sc">!</span><span class="fu">is.na</span>(dat<span class="sc">$</span>AGE),]</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>dat<span class="sc">$</span>TRT <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(dat<span class="sc">$</span>TRT)</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>data <span class="ot">&lt;-</span> dat[, <span class="fu">c</span>(<span class="st">&quot;SUBJID&quot;</span>,<span class="st">&quot;OS&quot;</span>,<span class="st">&quot;OSevent&quot;</span>,<span class="st">&quot;KRAS&quot;</span>, <span class="st">&quot;AGE&quot;</span>, <span class="st">&quot;TRT&quot;</span>, <span class="st">&quot;B_ECOG&quot;</span>, <span class="st">&quot;ARM&quot;</span>, <span class="st">&quot;PFS&quot;</span>, <span class="st">&quot;PFSevent&quot;</span>)]  <span class="co"># TRT equals ARM</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>train.data <span class="ot">=</span> data[, <span class="fu">c</span>(<span class="st">&quot;SUBJID&quot;</span>, <span class="st">&quot;OS&quot;</span>, <span class="st">&quot;OSevent&quot;</span>, <span class="st">&quot;KRAS&quot;</span>, <span class="st">&quot;AGE&quot;</span>, <span class="st">&quot;B_ECOG&quot;</span>, <span class="st">&quot;TRT&quot;</span>, <span class="st">&quot;PFS&quot;</span>, <span class="st">&quot;PFSevent&quot;</span>,<span class="st">&quot;ARM&quot;</span>)]</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  </span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>train.data<span class="sc">$</span>TRT <span class="ot">=</span> <span class="fu">ifelse</span>(train.data<span class="sc">$</span>TRT <span class="sc">==</span> <span class="st">&quot;FOLFOX alone&quot;</span>, <span class="at">yes =</span> <span class="dv">0</span>, <span class="at">no =</span> <span class="dv">1</span>)</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>train.data<span class="sc">$</span>TRT <span class="ot">=</span> <span class="fu">as.factor</span>(train.data<span class="sc">$</span>TRT)</span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>train.data<span class="sc">$</span>KRAS <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(train.data<span class="sc">$</span>KRAS)</span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>train.data<span class="sc">$</span>B_ECOG <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(train.data<span class="sc">$</span>B_ECOG)</span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a>train.data <span class="ot">=</span> <span class="fu">filter</span>(train.data,B_ECOG <span class="sc">==</span> <span class="st">&quot;1&quot;</span><span class="sc">|</span> B_ECOG <span class="sc">==</span> <span class="st">&quot;0&quot;</span>)</span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a>train.data<span class="sc">$</span>B_ECOG <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(train.data<span class="sc">$</span>B_ECOG)</span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a>x_name <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;KRAS&quot;</span>,<span class="st">&quot;B_ECOG&quot;</span>, <span class="st">&quot;AGE&quot;</span>)</span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a>dat <span class="ot">=</span> train.data </span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="do">## transform proximity to distance matrix</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>distance <span class="ot">=</span> <span class="dv">1</span> <span class="sc">-</span> proximity</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>tsne_result <span class="ot">=</span> Rtsne<span class="sc">::</span><span class="fu">Rtsne</span>(distance,<span class="at">dims=</span><span class="dv">2</span>,<span class="at">is_distance=</span><span class="cn">TRUE</span>,<span class="at">verbose=</span><span class="cn">FALSE</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>                               <span class="at">max_iter =</span> <span class="dv">5000</span>, <span class="at">theta =</span> <span class="dv">0</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="do">## K-Means Clustering</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>kmeans_result_2 <span class="ot">=</span> <span class="fu">kmeans</span>(tsne_result<span class="sc">$</span>Y, <span class="at">centers =</span> <span class="dv">2</span>, <span class="at">iter.max =</span> <span class="dv">50</span>,<span class="at">nstart =</span> <span class="dv">30</span>)</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>kmeans_result_3 <span class="ot">=</span> <span class="fu">kmeans</span>(tsne_result<span class="sc">$</span>Y, <span class="at">centers =</span> <span class="dv">3</span>, <span class="at">iter.max =</span> <span class="dv">50</span>,<span class="at">nstart =</span> <span class="dv">30</span>)</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>kmeans_result_4 <span class="ot">=</span> <span class="fu">kmeans</span>(tsne_result<span class="sc">$</span>Y, <span class="at">centers =</span> <span class="dv">4</span>, <span class="at">iter.max =</span> <span class="dv">50</span>,<span class="at">nstart =</span> <span class="dv">30</span>)</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>kmeans_result_5 <span class="ot">=</span> <span class="fu">kmeans</span>(tsne_result<span class="sc">$</span>Y, <span class="at">centers =</span> <span class="dv">5</span>, <span class="at">iter.max =</span> <span class="dv">50</span>,<span class="at">nstart =</span> <span class="dv">30</span>)</span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>dat<span class="sc">$</span>kmeans2 <span class="ot">=</span> <span class="fu">as.factor</span>(kmeans_result_2<span class="sc">$</span>cluster)</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>dat<span class="sc">$</span>kmeans3 <span class="ot">=</span> <span class="fu">as.factor</span>(kmeans_result_3<span class="sc">$</span>cluster)</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>dat<span class="sc">$</span>kmeans4 <span class="ot">=</span> <span class="fu">as.factor</span>(kmeans_result_4<span class="sc">$</span>cluster)</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>dat<span class="sc">$</span>kmeans5 <span class="ot">=</span> <span class="fu">as.factor</span>(kmeans_result_5<span class="sc">$</span>cluster)</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a></span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>pval_flag <span class="ot">=</span> <span class="dv">2</span></span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>result <span class="ot">=</span> <span class="fu">list</span>()</span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a></span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">5</span>){</span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>    x_name <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;B_ECOG&quot;</span>,<span class="st">&quot;KRAS&quot;</span>,<span class="st">&quot;AGE&quot;</span>)</span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a>    c_name <span class="ot">=</span> <span class="fu">paste0</span>(<span class="st">&quot;kmeans&quot;</span>,j)  </span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a>    profiles <span class="ot">&lt;-</span> <span class="fu">tree_fit</span>(<span class="at">Y=</span>dat[,c_name], <span class="at">X=</span>dat[,x_name], <span class="at">seed=</span><span class="dv">1234</span>,<span class="at">maxdepth =</span> <span class="dv">2</span>)</span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a>    <span class="cf">if</span>(<span class="fu">is.null</span>(profiles)){</span>
+<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a>      <span class="cf">next</span></span>
+<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a>    }</span>
+<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a>    <span class="cf">for</span> (k <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(profiles<span class="sc">$</span>trees)){</span>
+<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a>      dat <span class="ot">=</span> <span class="fu">predict_path</span>(profiles<span class="sc">$</span>trees[[k]], <span class="at">newdata =</span> dat)</span>
+<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a>      </span>
+<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a>      data_tmp <span class="ot">=</span> dat</span>
+<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a>      <span class="do">## calculate p leaf </span></span>
+<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a>      fit_surv3 <span class="ot">=</span> <span class="fu">coxph</span>(<span class="fu">Surv</span>(OS,OSevent)<span class="sc">~</span>TRT, <span class="at">data =</span> data_tmp)</span>
+<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a>      fit_surv2 <span class="ot">=</span> <span class="fu">coxph</span>(<span class="fu">Surv</span>(OS,OSevent)<span class="sc">~</span>leaf<span class="sc">*</span>TRT, <span class="at">data =</span> data_tmp)</span>
+<span id="cb9-35"><a href="#cb9-35" tabindex="-1"></a>      pval <span class="ot">=</span> <span class="fu">as.numeric</span>(<span class="fu">na.omit</span>(stats<span class="sc">::</span><span class="fu">anova</span>(fit_surv2, fit_surv3)[[<span class="dv">4</span>]]))</span>
+<span id="cb9-36"><a href="#cb9-36" tabindex="-1"></a>      </span>
+<span id="cb9-37"><a href="#cb9-37" tabindex="-1"></a>      <span class="cf">if</span>(pval <span class="sc">&lt;</span> pval_flag){</span>
+<span id="cb9-38"><a href="#cb9-38" tabindex="-1"></a>        pval_flag <span class="ot">=</span> pval</span>
+<span id="cb9-39"><a href="#cb9-39" tabindex="-1"></a>        result[[<span class="dv">1</span>]] <span class="ot">=</span> profiles</span>
+<span id="cb9-40"><a href="#cb9-40" tabindex="-1"></a>        result[[<span class="dv">2</span>]] <span class="ot">=</span> pval_flag</span>
+<span id="cb9-41"><a href="#cb9-41" tabindex="-1"></a>        result[[<span class="dv">3</span>]] <span class="ot">=</span> j</span>
+<span id="cb9-42"><a href="#cb9-42" tabindex="-1"></a>        result[[<span class="dv">4</span>]] <span class="ot">=</span> k</span>
+<span id="cb9-43"><a href="#cb9-43" tabindex="-1"></a>      }</span>
+<span id="cb9-44"><a href="#cb9-44" tabindex="-1"></a>    }</span>
+<span id="cb9-45"><a href="#cb9-45" tabindex="-1"></a>    </span>
+<span id="cb9-46"><a href="#cb9-46" tabindex="-1"></a>}</span></code></pre></div>
+<div id="visualize-profile-identified-by-dense-random-forests" class="section level3">
+<h3>Visualize profile identified by dense random forests</h3>
+<p>Each terminal node represents a discovered subgroup; the split
+variables and percentages indicate subgroup profiles.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">plot_profile</span>(result[[<span class="dv">1</span>]]<span class="sc">$</span>trees[[result[[<span class="dv">4</span>]]]])</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>We use minimum <span class="math inline">\(p_{leaf}\)</span> to
+select best decision tree. The detailed definition can be found at <a href="https://arxiv.org/abs/2505.17917" class="uri">https://arxiv.org/abs/2505.17917</a> .</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">cat</span>(result[[<span class="dv">2</span>]])</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#&gt; 7.849685e-13</span></span></code></pre></div>
+</div>
+</div>
+<div id="calibration" class="section level2">
+<h2>Calibration</h2>
+<p>We simulate NULL scenario by permute current data, then records the
+<span class="math inline">\(p_{leaf}\)</span>, the following results are
+pre-computing results.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;p_leaf_list&quot;</span>, <span class="at">package =</span> <span class="st">&quot;randomForestSRC&quot;</span>)</span></code></pre></div>
+<p>By comparing the data with the NULL scenario’s <span class="math inline">\(p_{leaf}\)</span>, we can exclude
+non-heterogeneous cases. Here, we control the type I error rate at <span class="math inline">\(1%\)</span>.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">quantile</span>(p_leaf_list,<span class="fl">0.01</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co">#&gt;           1% </span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#&gt; 0.0004303215</span></span></code></pre></div>
+<p>In study 309, the <span class="math inline">\(p_{leaf}\)</span> is
+smaller than calibration threshold, so there is heterogeneity. The
+subtype discovery result see the decision tree.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
