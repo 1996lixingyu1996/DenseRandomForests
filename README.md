@@ -230,50 +230,69 @@ dat = train.data
 
 ``` r
 
+
+W_mat <- as.kernelMatrix(as.matrix(proximity)) 
+
+sc2 <- specc(W_mat, centers = 2)
+clusters2 <- as.factor(as.integer(sc2))
+dat$kmeans2 = as.factor(clusters2)
+
+sc3 <- specc(W_mat, centers = 3)
+clusters3 <- as.factor(as.integer(sc3))
+dat$kmeans3 = as.factor(clusters3)
+
+sc4 <- specc(W_mat, centers = 4)
+clusters4 <- as.factor(as.integer(sc4))
+dat$kmeans4 = as.factor(clusters4)
+
+sc5 <- specc(W_mat, centers = 5)
+clusters5 <- as.factor(as.integer(sc5))
+dat$kmeans5 = as.factor(clusters5)
+
+
 ## transform proximity to distance matrix
-distance = 1 - proximity
-tsne_result = Rtsne::Rtsne(distance,dims=2,is_distance=TRUE,verbose=FALSE,
-                               max_iter = 5000, theta = 0)
-
-## K-Means Clustering
-kmeans_result_2 = kmeans(tsne_result$Y, centers = 2, iter.max = 50,nstart = 30)
-kmeans_result_3 = kmeans(tsne_result$Y, centers = 3, iter.max = 50,nstart = 30)
-kmeans_result_4 = kmeans(tsne_result$Y, centers = 4, iter.max = 50,nstart = 30)
-kmeans_result_5 = kmeans(tsne_result$Y, centers = 5, iter.max = 50,nstart = 30)
-
-dat$kmeans2 = as.factor(kmeans_result_2$cluster)
-dat$kmeans3 = as.factor(kmeans_result_3$cluster)
-dat$kmeans4 = as.factor(kmeans_result_4$cluster)
-dat$kmeans5 = as.factor(kmeans_result_5$cluster)
+# distance = 1 - proximity
+# tsne_result = Rtsne::Rtsne(distance,dims=2,is_distance=TRUE,verbose=FALSE,
+#                            max_iter = 5000, theta = 0)
+# 
+# ## K-Means Clustering
+# kmeans_result_2 = kmeans(tsne_result$Y, centers = 2, iter.max = 50,nstart = 30)
+# kmeans_result_3 = kmeans(tsne_result$Y, centers = 3, iter.max = 50,nstart = 30)
+# kmeans_result_4 = kmeans(tsne_result$Y, centers = 4, iter.max = 50,nstart = 30)
+# kmeans_result_5 = kmeans(tsne_result$Y, centers = 5, iter.max = 50,nstart = 30)
+# 
+# dat$kmeans2 = as.factor(kmeans_result_2$cluster)
+# dat$kmeans3 = as.factor(kmeans_result_3$cluster)
+# dat$kmeans4 = as.factor(kmeans_result_4$cluster)
+# dat$kmeans5 = as.factor(kmeans_result_5$cluster)
 
 pval_flag = 2
 result = list()
 
 for (j in 2:5){
-    x_name = c("B_ECOG","KRAS","AGE")
-    c_name = paste0("kmeans",j)  
-    profiles <- tree_fit(Y=dat[,c_name], X=dat[,x_name], seed=1234,maxdepth = 2)
-    if(is.null(profiles)){
-      next
-    }
-    for (k in 1:length(profiles$trees)){
-      dat = predict_path(profiles$trees[[k]], newdata = dat)
-      
-      data_tmp = dat
-      ## calculate p leaf 
-      fit_surv3 = coxph(Surv(OS,OSevent)~TRT, data = data_tmp)
-      fit_surv2 = coxph(Surv(OS,OSevent)~leaf*TRT, data = data_tmp)
-      pval = as.numeric(na.omit(stats::anova(fit_surv2, fit_surv3)[[4]]))
-      
-      if(pval < pval_flag){
-        pval_flag = pval
-        result[[1]] = profiles
-        result[[2]] = pval_flag
-        result[[3]] = j
-        result[[4]] = k
-      }
-    }
+  x_name = c("B_ECOG","KRAS","AGE")
+  c_name = paste0("kmeans",j)
+  profiles <- tree_fit(Y=dat[,c_name], X=dat[,x_name], seed=1234,maxdepth = 2)
+  if(is.null(profiles)){
+    next
+  }
+  for (k in 1:length(profiles$trees)){
+    dat = predict_path(profiles$trees[[k]], newdata = dat)
     
+    data_tmp = dat
+    ## calculate p leaf
+    fit_surv3 = coxph(Surv(OS,OSevent)~TRT, data = data_tmp)
+    fit_surv2 = coxph(Surv(OS,OSevent)~leaf*TRT, data = data_tmp)
+    pval = as.numeric(na.omit(stats::anova(fit_surv2, fit_surv3)[[4]]))
+    
+    if(pval < pval_flag){
+      pval_flag = pval
+      result[[1]] = profiles
+      result[[2]] = pval_flag
+      result[[3]] = j
+      result[[4]] = k
+    }
+  }
 }
 ```
 
