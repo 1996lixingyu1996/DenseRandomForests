@@ -318,3 +318,8 @@ quantile(p_leaf_list,0.01)
 In study 309, the $p_{leaf}$ is smaller than calibration threshold, so
 there is heterogeneity. The subtype discovery result see the decision
 tree.
+
+## Contact
+
+**Xingyu Li**  
+Email: lxingyu1996@gmail.com
