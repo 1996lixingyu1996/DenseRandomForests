@@ -340,7 +340,7 @@ tree.
 
 ## Contact
 
-**Ph.D.Xingyu Li**  
+**Xingyu Li**  
 Email: lxingyu1996@gmail.com
 
 ## Paper link
