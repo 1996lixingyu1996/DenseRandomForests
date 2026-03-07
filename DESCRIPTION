@@ -7,7 +7,7 @@ Author: Hemant Ishwaran <hemant.ishwaran@gmail.com>, Udaya B. Kogalur <ubk@kogal
 Maintainer: XingyuLi <lxingyu1996@gmail.com>
 BugReports: https://github.com/kogalur/randomForestSRC/issues/
 Depends: R (>= 3.6.0),
-Imports: parallel, data.tree, DiagrammeR,rpart,rpart.plot,stringr,survival,treeClust,kernlab
+Imports: parallel, data.tree, DiagrammeR,rpart,rpart.plot,stringr,survival,treeClust,kernlab,survival
 Suggests: 
     survival,
     kernlab,
