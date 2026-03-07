@@ -343,5 +343,8 @@ tree.
 **Ph.D.Xingyu Li**  
 Email: lxingyu1996@gmail.com
 
+## Paper link
+https://arxiv.org/abs/2601.01380
+
 ## Acknowledgement
 The work was supported by Amgen Inc.
