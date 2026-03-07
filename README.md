@@ -14,7 +14,7 @@ subgroup discovery in survival settings.
 Splitting rule for dense random forests.
 
 Fit cox model in each splitting,
-$$h(t|M,W) = h_0(t)\times \exp\{\gamma_1 V+\gamma_2 W+\gamma_3 V\times W\}$$
+$$h(t|M,W) = h_0(t)\times \exp(\{\gamma_1 V+\gamma_2 W+\gamma_3 V\times W\})$$
 
 them, the splitting rule is:
 $$G(s) = \omega_1 \times (a_1-0.5)/2+ (1 - \omega_1)\times (a_2/\omega_2)$$
