@@ -205,7 +205,7 @@ proximity = rfsrc_compute_proximity(membership = membership, inbag=NULL, oob='AL
 
 ``` r
 data(proximity, package = "randomForestSRC")
-library(kernlab)
+library(kernlab)  # we need kernlab package
 library(survival)
 ```
 
