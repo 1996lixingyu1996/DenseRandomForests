@@ -249,23 +249,6 @@ sc5 <- specc(W_mat, centers = 5)
 clusters5 <- as.factor(as.integer(sc5))
 dat$kmeans5 = as.factor(clusters5)
 
-
-## transform proximity to distance matrix
-# distance = 1 - proximity
-# tsne_result = Rtsne::Rtsne(distance,dims=2,is_distance=TRUE,verbose=FALSE,
-#                            max_iter = 5000, theta = 0)
-# 
-# ## K-Means Clustering
-# kmeans_result_2 = kmeans(tsne_result$Y, centers = 2, iter.max = 50,nstart = 30)
-# kmeans_result_3 = kmeans(tsne_result$Y, centers = 3, iter.max = 50,nstart = 30)
-# kmeans_result_4 = kmeans(tsne_result$Y, centers = 4, iter.max = 50,nstart = 30)
-# kmeans_result_5 = kmeans(tsne_result$Y, centers = 5, iter.max = 50,nstart = 30)
-# 
-# dat$kmeans2 = as.factor(kmeans_result_2$cluster)
-# dat$kmeans3 = as.factor(kmeans_result_3$cluster)
-# dat$kmeans4 = as.factor(kmeans_result_4$cluster)
-# dat$kmeans5 = as.factor(kmeans_result_5$cluster)
-
 pval_flag = 2
 result = list()
 
