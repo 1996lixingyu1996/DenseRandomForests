@@ -205,6 +205,8 @@ proximity = rfsrc_compute_proximity(membership = membership, inbag=NULL, oob='AL
 
 ``` r
 data(proximity, package = "randomForestSRC")
+library(kernlab)
+library(survival)
 ```
 
 ``` r
@@ -222,7 +224,7 @@ train.data$TRT = ifelse(train.data$TRT == "FOLFOX alone", yes = 0, no = 1)
 train.data$TRT = as.factor(train.data$TRT)
 train.data$KRAS <- as.factor(train.data$KRAS)
 train.data$B_ECOG <- as.factor(train.data$B_ECOG)
-train.data = filter(train.data,B_ECOG == "1"| B_ECOG == "0")
+train.data = train.data[train.data$B_ECOG%in%c(0,1),]
 train.data$B_ECOG <- as.factor(train.data$B_ECOG)
 x_name = c("KRAS","B_ECOG", "AGE")
 dat = train.data 
