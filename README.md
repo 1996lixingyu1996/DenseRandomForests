@@ -1,4 +1,4 @@
-Dense Random Forest for Subgroup Analysis
+Dense Random Forest for Subgroup Analysis in Clinical Trial
 ================
 
 This file demonstrates how to use the dense random forest method for
