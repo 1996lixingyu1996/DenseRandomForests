@@ -17,7 +17,7 @@ Fit cox model in each splitting,
 $$h(t|M,W) = h_0(t)\times \exp(\{\gamma_1 V+\gamma_2 W+\gamma_3 V\times W\})$$
 
 them, the splitting rule is:
-$$G(s) = \omega_1 \times (a_1-0.5)/2+ (1 - \omega_1)\times (a_2/\omega_2)$$
+$$G(s) = \omega_1 \times (a_1-0.5)+ (1 - \omega_1)\times (a_2/\omega_2)$$
 where $\omega_1$ is the weight parameter, $\omega_2$ is the den
 parameter. $a_1$ is the C-Index, $a_2$ is the Z score of $\gamma_3$ in
 the Cox model. $\omega_1=0.5$ is the default value. 
