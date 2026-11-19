@@ -1,14 +1,14 @@
-# Dense Random Survival Forests
+# Dense Random Forests
 
 ### Interpretable Subgroup Discovery for Heterogeneous Treatment Benefit in Survival Outcomes
 
-**Dense Random Survival Forests (DRF)** is a treatment-supervised patient similarity-learning framework for discovering **clinically interpretable subgroups** with potentially different treatment benefits in right-censored time-to-event data.
+**Dense Random Forests (DRF)** is a treatment-supervised patient similarity-learning framework for discovering **clinically interpretable subgroups** with potentially different treatment benefits in right-censored time-to-event data.
 
 Instead of estimating a treatment effect for every patient and then grouping those estimates, DRF learns **which patients are similar in their survival and treatment-response patterns**. It then discovers candidate patient groups, converts them into straightforward clinical rules, and uses **empirical calibration** to decide whether the subgroup findings provide sufficient evidence of treatment-effect heterogeneity.
 
 ## Method at a Glance
 
-![Dense Random Survival Forests: method overview, multi-parameter forest aggregation, proximity, subgroup discovery, and empirical calibration](README_preview_part.png)
+![Dense Random Forests: method overview, multi-parameter forest aggregation, proximity, subgroup discovery, and empirical calibration](README_preview_part.png)
 
 *Figure. DRF trains treatment-supervised survival forests under multiple parameter settings, aggregates their terminal-node memberships, computes a treatment-informed patient proximity matrix, discovers and profiles candidate subgroups, and calibrates the evidence for treatment-effect heterogeneity.*
 
