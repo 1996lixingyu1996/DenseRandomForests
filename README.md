@@ -37,23 +37,6 @@ $\omega_1$: weight parameter.
 
 For more information, see the help documentation.
 
-``` r
-mtry_list = c(2, 3)
-ntree = 500
-nsplit = c(20, 30, 40) 
-nodesize = c(50, 70, 100)
-nodedepth = c(2, 3)
-den_util = 3.5
-weight_util = c(30, 40, 50)
-```
-
-Then, combine these parameters as the combinatons,
-
-``` r
-para_list = base::expand.grid(mtry_list, ntree, nodesize, nodedepth, nsplit, den_util, weight_util)
-colnames(para_list) = c("mtry", "ntree", "nodesize", "nodedepth", "nsplit", "den_util", "weight_util")
-df = para_list
-```
 
 ## Here we train the random forest with the above parameters. The following function can use parallel technique.
 
