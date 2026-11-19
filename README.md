@@ -8,7 +8,7 @@ Instead of estimating a treatment effect for every patient and then grouping tho
 
 ## Method at a Glance
 
-![Dense Random Survival Forests: method overview, multi-parameter forest aggregation, proximity, subgroup discovery, and empirical calibration](README_preview_full.png)
+![Dense Random Survival Forests: method overview, multi-parameter forest aggregation, proximity, subgroup discovery, and empirical calibration](README_preview_part.png)
 
 *Figure. DRF trains treatment-supervised survival forests under multiple parameter settings, aggregates their terminal-node memberships, computes a treatment-informed patient proximity matrix, discovers and profiles candidate subgroups, and calibrates the evidence for treatment-effect heterogeneity.*
 
