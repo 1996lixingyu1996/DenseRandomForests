@@ -31,8 +31,8 @@ DRF was designed to address three related challenges:
 Each survival tree uses a proposed splitting score that combines **prognostic discrimination** and **treatment-by-split interaction**:
 
 $$
-G(s)=\omega_1\left(\frac{C(s)}{0.5}-1\right)
-+(1-\omega_1)\min\left\{\frac{|Z_{\mathrm{int}}(s)|}{\omega_2},1\right\}.
+G(s)=\omega_1 (\frac{C(s)}{0.5}-1)
++(1-\omega_1)\min\!\{\frac{|Z_{\mathrm{int}}(s)|}{\omega_2},1\}.
 $$
 
 Here, $C(s)$ is the concordance index from the split-specific Cox model, $Z_{\mathrm{int}}(s)$ is the Wald statistic for the treatment-by-split interaction, $\omega_1$ balances the two components, and $\omega_2$ scales and truncates the interaction component. The reported analyses use $\omega_1=0.5$ and $\omega_2=3.5$.
@@ -50,7 +50,7 @@ This aggregation builds one ensemble representation from many different patient 
 Patients are more similar when they repeatedly occupy the same terminal node across the aggregated ensemble. For $B$ total trees, the conventional all-sample proximity is
 
 $$
-S(i,j)=\frac{1}{B}\sum_{b=1}^{B}\mathbf{1}\left\{L_{ib}=L_{jb}\right\},
+S(i,j)=\frac{1}{B}\sum_{b=1}^{B}\mathbf{1}\{L_{ib}=L_{jb}\},
 $$
 
 where $L_{ib}$ is the terminal-node label for patient $i$ in tree $b$.
