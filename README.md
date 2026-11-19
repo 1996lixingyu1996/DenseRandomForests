@@ -1,4 +1,4 @@
-# Dense Random Survival Forests (DRF)
+# Dense Random Survival Forests
 
 ### Interpretable Subgroup Discovery for Heterogeneous Treatment Benefit in Survival Outcomes
 
