@@ -63,7 +63,7 @@ Spectral clustering uses the resulting proximity matrix to find patients with si
 
 ### 5. Translate clusters into interpretable patient profiles
 
-A constrained classification tree predicts the cluster assignments from baseline covariates. Its teral leaves provide explicit rules—such as age and prior treatment thresholds—that clinicians and researchers can inspect and communicate.
+A constrained classification tree predicts the cluster assignments from baseline covariates. Its termianl nodes provide explicit rules, such as age and prior treatment thresholds, that clinicians and researchers can inspect and communicate.
 
 Importantly, these are **candidate profiles**. A visually persuasive tree does not establish treatment-effect heterogeneity.
 
