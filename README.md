@@ -1,317 +1,156 @@
-Dense Random Forest for Subgroup Analysis in Clinical Trial
-================
+# Dense Random Survival Forests (DRF)
 
-This file demonstrates how to use the Dense Random Forest (DRF) method for
-subgroup analysis. The HIV Trial ACTG 175 Phase 3 trial is used to illustrate the method.
+### Interpretable Subgroup Discovery for Heterogeneous Treatment Benefit in Survival Outcomes
 
-DRF extend traditional random forests by
-incorporating a model-based splitting criterion, enabling efficient
-subgroup discovery in survival settings.
+**Dense Random Survival Forests (DRF)** is a treatment-supervised patient similarity-learning framework for discovering **clinically interpretable subgroups** with potentially different treatment benefits in right-censored time-to-event data.
 
-### Set training parameters
+Instead of estimating a treatment effect for every patient and then grouping those estimates, DRF learns **which patients are similar in their survival and treatment-response patterns**. It then discovers candidate patient groups, converts them into straightforward clinical rules, and uses **empirical calibration** to decide whether the subgroup findings provide sufficient evidence of treatment-effect heterogeneity.
 
-Splitting rule for dense random forests.
+## Method at a Glance
 
-Fit cox model in each splitting,
-$$h(t|M,W) = h_0(t)\times \exp(\{\gamma_1 V+\gamma_2 W+\gamma_3 V\times W\})$$
+![Dense Random Survival Forests: method overview, multi-parameter forest aggregation, proximity, subgroup discovery, and empirical calibration](images/drf-method-overview.png)
 
-them, the splitting rule is:
-$$G(s) = \omega_1 \times (a_1/0.5-1)+ (1 - \omega_1)\times (a_2/\omega_2)$$
-where $\omega_1$ is the weight parameter, $\omega_2$ is the den
-parameter. $a_1$ is the C-Index, $a_2$ is the Z score of $\gamma_3$ in
-the Cox model. $\omega_1=0.5$ is the default value. 
+*Figure. DRF trains treatment-supervised survival forests under multiple parameter settings, aggregates their terminal-node memberships, computes a treatment-informed patient proximity matrix, discovers and profiles candidate subgroups, and calibrates the evidence for treatment-effect heterogeneity.*
 
-mtry:Number of candidate variables randomly selected at each split,
+**The central idea:** **learn patient similarity → discover candidate subgroups → obtain interpretable rules → calibrate before reporting heterogeneity.**
 
-ntree:Number of trees to grow,
+## Why DRF?
 
-nsplit:Number of random split points per variable,
+Survival prognosis and treatment benefit are not the same: patients with a similar overall survival risk may respond very differently to an intervention. Standard random survival forests typically focus on separating survival outcomes, without explicitly encouraging splits that distinguish **treatment responses**.
 
-nodesize:Minimum terminal node size,
+DRF was designed to address three related challenges:
 
-nodedepth:Maximum tree depth,
+1. **Heterogeneity-aware representation.** Construct a patient similarity measure informed by both survival prognosis and treatment interactions.
+2. **Stable, interpretable discovery.** Combine information from multiple forest configurations, cluster the resulting representation, and summarize it using concise covariate-based decision rules.
+3. **Reliable interpretation.** Distinguish data-adaptively discovered patterns from statistically supported treatment-effect heterogeneity using empirical calibration.
 
-$\omega_2$: parameter, $3.5$ as default value,
+## How DRF Works
 
-$\omega_1$: weight parameter.
+### 1. Train treatment-supervised survival forests under multiple parameter settings
 
-For more information, see the help documentation.
+Each survival tree uses a proposed splitting score that combines **prognostic discrimination** and **treatment-by-split interaction**:
 
+$$
+G(s)=\omega_1\left(\frac{C(s)}{0.5}-1\right)
++(1-\omega_1)\min\left\{\frac{|Z_{\mathrm{int}}(s)|}{\omega_2},1\right\}.
+$$
 
-## Here we train the random forest with the above parameters. The following function can use parallel technique.
+Here, $C(s)$ is the concordance index from the split-specific Cox model, $Z_{\mathrm{int}}(s)$ is the Wald statistic for the treatment-by-split interaction, $\omega_1$ balances the two components, and $\omega_2$ scales and truncates the interaction component. The reported analyses use $\omega_1=0.5$ and $\omega_2=3.5$.
 
-``` r
-f_simulation <- function(i){
-  options(rf.cores=1, mc.cores = 1)
-  
-  study_id = "309"
-  
-  ### the path is used to save membership matrix
-  result_save_path = ""
-  
-  if(!dir.exists(result_save_path)){ dir.create(result_save_path)}
-  
-  result_folder_path = paste0(result_save_path, "/", study_id)
-  if(!dir.exists(result_folder_path)){ dir.create(result_folder_path)}
-  
-  ### load data
-  data(crc_adsl, package = "randomForestSRC")
-  dat <- base::subset(crc_adsl, crc_adsl$StudyID==study_id)
-  dat <- dat[!is.na(dat$B_ECOG),]
-  dat <- dat[!is.na(dat$KRAS),]
-  dat <- dat[!is.na(dat$AGE),]
-  dat$TRT <- as.factor(dat$TRT)
-  data <- dat[, c("SUBJID","OS","OSevent","KRAS", "AGE", "TRT", "B_ECOG", "ARM", "PFS", "PFSevent")]  # TRT equals ARM
-  train.data = data[, c("SUBJID", "OS", "OSevent", "KRAS", "AGE", "B_ECOG", "TRT", "PFS", "PFSevent","ARM")]
-  
-  train.data$TRT = ifelse(train.data$TRT == "FOLFOX alone", yes = 0, no = 1)
-  train.data$TRT = as.factor(train.data$TRT)
-  train.data$KRAS <- as.factor(train.data$KRAS)
-  train.data$B_ECOG <- as.factor(train.data$B_ECOG)
-  train.data = filter(train.data,B_ECOG == "1"| B_ECOG == "0")
-  train.data$B_ECOG <- as.factor(train.data$B_ECOG)
-  x_name = c("KRAS","B_ECOG", "AGE")
- 
-  df = para_list    
+**Dense** refers to training and combining **multiple forests across a prespecified grid of parameter configurations**, rather than selecting a single forest specification.
 
-  data.tmp = train.data
-  
-  # train model
-  para.mtry = df[i, "mtry"]
-  para.ntree = df[i, "ntree"]
-  para.nodesize = df[i, "nodesize"]
-  para.nodedepth = df[i, "nodedepth"]
-  para.nsplit = df[i, "nsplit"]
-  para.den_util = df[i, "den_util"]
-  para.weight_util = df[i, "weight_util"]
-  para.seed = 1  
-  if(para.nodedepth == 0)
-  {
-    para.nodedepth = NULL
-  }
-    ## train random forests with different parameter set up
-    rf.object = tryCatch(expr = {rfsrc(Surv(OS, OSevent)~KRAS+B_ECOG+AGE, 
-                                             data = data.tmp, ntree = para.ntree,
-                                             nodesize = para.nodesize, 
-                                             nodedepth = para.nodedepth, 
-                                             mtry=para.mtry, 
-                                             nsplit = para.nsplit, splitrule = "custom5", 
-                                             block.size = NULL, statistics = TRUE, 
-                                             forest = TRUE, membership = TRUE, 
-                                             weight_util = (para.weight_util/100), 
-                                             den_util = para.den_util, 
-                                             treatment = data.tmp$TRT,
-                                             xvar.wt = xvar_weight, var.used = "all.trees")},
-                               error = function(e){0})
-    
-    if (is.list(rf.object)){
-      arg <- list(na.action="na.impute", prox.dist.type="all")
-      rf.object.predict <- predict.rfsrc(object=rf.object, 
-                                               newdata=data.tmp, 
-                                               na.action = arg$na.action, 
-                                               membership=TRUE, proximity = FALSE, 
-                                               treatment_flag = TRUE)
-      predict_membership = rf.object.predict$membership
-      membership_save_path = paste0(result_folder_path, "/",
-                                    "para_id_", i, "_mtry_", para.mtry,
-                                    "_ntree_", para.ntree, "_nodesize_",
-                                    para.nodesize, "_nsplit_",
-                                    para.nsplit, "para_weight_util_",
-                                    para.weight_util, "_nodedepth_",
-                                    para.nodedepth, ".csv")
-      
-      rio::export(predict_membership, membership_save_path)
-      base::rm(rf.object)
-      base::rm(rf.object.predict)
-      base::rm(predict_membership)
-      base::rm(membership_save_path)
-    }
-    
-  }
+### 2. Aggregate the forests **before** computing proximity
+
+For each trained tree, DRF records the terminal node to which each patient belongs. The terminal-node membership matrices from all configurations are **concatenated across trees**.
+
+This aggregation builds one ensemble representation from many different patient partitions. **The final proximity matrix is then constructed from the aggregated tree memberships**—not by clustering first or treating proximity as an input to forest aggregation.
+
+### 3. Construct treatment-informed patient similarity
+
+Patients are more similar when they repeatedly occupy the same terminal node across the aggregated ensemble. For $B$ total trees, the conventional all-sample proximity is
+
+$$
+S(i,j)=\frac{1}{B}\sum_{b=1}^{B}\mathbf{1}\left\{L_{ib}=L_{jb}\right\},
+$$
+
+where $L_{ib}$ is the terminal-node label for patient $i$ in tree $b$.
+
+Because the forests were grown using a treatment-aware splitting criterion, the resulting proximity reflects **both clinical prognosis and treatment-response patterns**. The manuscript also considers joint out-of-bag (OOB) proximity to reduce direct reuse of patients in tree construction and pairwise similarity estimation.
+
+### 4. Discover candidate subgroups using spectral clustering
+
+Spectral clustering uses the resulting proximity matrix to find patients with similar treatment-related survival patterns. Candidate numbers of clusters are examined rather than assuming one subgroup structure in advance.
+
+### 5. Translate clusters into interpretable patient profiles
+
+A constrained classification tree predicts the cluster assignments from baseline covariates. Its terminal leaves provide explicit rules—such as age and prior treatment thresholds—that clinicians and researchers can inspect and communicate.
+
+Importantly, these are **candidate profiles**. A visually persuasive tree does not establish treatment-effect heterogeneity.
+
+### 6. Assess heterogeneity and apply empirical calibration
+
+For each eligible clustering solution, DRF compares two Cox models:
+
+- **Without treatment interaction:** treatment + subgroup prognostic effects.
+- **With treatment interaction:** treatment + subgroup prognostic effects + treatment-by-subgroup interactions.
+
+The likelihood-ratio test gives a nominal $p_{\mathrm{leaf}}(K)$ for the candidate number of clusters $K$. DRF selects the eligible solution with the smallest nominal value, **subject to a calibrated critical threshold**.
+
+Why calibration? Both the patient profiles and the selected number of clusters depend on the observed data. Searching over many possible partitions can generate apparently small nominal p-values even when there is **no treatment-effect heterogeneity**.
+
+**Empirical calibration addresses the adaptive search:** a reference distribution of the selection statistic is obtained under appropriate no-heterogeneity settings, and a critical value $p^*$ is chosen to control false-positive subgroup declarations in the settings considered. The real-data analysis also uses treatment-assignment permutations as described in the manuscript.
+
+The reporting rule is:
+
+$$
+\min_{K\in\mathcal{K}_{+}} p_{\mathrm{leaf}}(K) < p^{*}
+\quad\Longrightarrow\quad
+\text{report the selected subgroup profile};
+$$
+
+**otherwise, retain the overall population as one group.** Calibration is an assessment of evidence—not proof that a subgroup is clinically actionable.
+
+---
+
+## Case Study: ACTG 175 HIV Phase III Trial
+
+We illustrate the methodology using the publicly available **ACTG 175** randomized HIV clinical trial (available through the R package `BART`). Following the analysis in the manuscript, we considered **1,083 patients** in two treatment arms:
+
+- **Treatment:** zidovudine plus didanosine.
+- **Control:** didanosine alone.
+
+The analysis used ten baseline characteristics, including age, baseline CD4 T-cell count (`cd40`), and days of prior antiretroviral therapy (`preanti`).
+
+### Exploratory patient profiles (without calibration-based exclusion)
+
+When the exclusion step was deliberately omitted, DRF produced an interpretable three-group profile:
+
+```text
+ACTG 175 (N = 1,083)
+│
+├── Prior antiretroviral therapy ≥ 691 days
+│     └── Subgroup 1 (n = 291)
+│
+└── Prior antiretroviral therapy < 691 days
+      ├── Age < 34 years  → Subgroup 2 (n = 389)
+      └── Age ≥ 34 years  → Subgroup 3 (n = 403)
 ```
 
-## calculate membership by random forest with custom5 splitting rule
+This is an example of the **interpretability** of DRF—not a validated finding that the three groups have different treatment effects.
 
-It can be calculated in parallel.
+### What did empirical calibration show?
 
-``` r
-for (i in 1:dim(df)[1]){
-  f_simulation(i)
-}
-```
+In the reported analysis, the treatment variable alone was permuted **10,000 times**, while other variables were held fixed. The observed nominal heterogeneity statistic and calibrated critical values were:
 
-## combine memberships.
+| Measure | Value |
+|:--|--:|
+| Observed nominal $p_{\mathrm{leaf}}$ | **0.017** |
+| Calibrated threshold at 5% Type I error | **0.0005** |
+| Calibrated threshold at 10% Type I error | **0.0013** |
 
-This code is used to combine membership matrix from the above the step.
-The inputs are a series of membership matrix, the output is the
-ensembled membership. (The outputs are too big, so the example only show
-codes.)
+Since $0.017>0.0013>0.0005$, the observed statistic **did not satisfy either calibrated threshold**.
 
-``` r
-folder_path = ""
+**Final result:** The DRF analysis found **no statistically significant evidence of treatment-effect heterogeneity** at the 5% or 10% levels. The final output therefore retained the **overall population**, and subgroup-specific hazard ratios and confidence intervals were not reported for the exploratory profile.
 
-membership = NULL
+> **Takeaway:** Flexible subgroup learning can yield interpretable profiles even when the evidence for different treatment effects is insufficient. DRF combines **discovery** with **calibration** so that exploratory partitions are not automatically reported as treatment-benefit subgroups.
 
-## combine all membership matrix
-for (i in 1:dim(df)[1]){
-  para.mtry = df[i, "mtry"]
-  para.ntree = df[i, "ntree"]
-  para.nodesize = df[i, "nodesize"]
-  para.nodedepth = df[i, "nodedepth"]
-  para.nsplit = df[i, "nsplit"]
-  para.den_util = df[i, "den_util"]
-  para.weight_util = df[i, "weight_util"]
-  para.seed = 1  
-  for (j in 1:3){
-    membership_save_path = paste0(folder_path, "/",
-                                  "para_id_", i, "_mtry_", para.mtry,
-                                  "_ntree_", para.ntree, "_nodesize_",
-                                  para.nodesize, "_nsplit_",
-                                  para.nsplit, "para_weight_util_",
-                                  para.weight_util, "_nodedepth_",
-                                  para.nodedepth, ".csv")
-    
-    membership_tmp = rio::import(membership_save_path)
-    membership = rbind.data.frame(membership, membership_tmp)
-  }
-}
-```
+## What Makes DRF Distinctive?
 
-## compute proximity from membership
+| Stage | Methodological contribution |
+|:--|:--|
+| Forest construction | Treatment-supervised splitting balances survival discrimination and treatment heterogeneity. |
+| **Dense** ensemble | Multiple forest configurations contribute complementary tree memberships. |
+| Representation | **Aggregation precedes proximity construction**; similarity is computed from the combined ensemble. |
+| Subgroup discovery | Spectral clustering uses the learned treatment-informed similarity matrix. |
+| Interpretation | A constrained decision tree provides concise, baseline-covariate subgroup rules. |
+| Statistical assessment | Empirical calibration addresses adaptive subgroup discovery before reporting heterogeneity. |
 
-``` r
-proximity = rfsrc_compute_proximity(membership = membership, inbag=NULL, oob='ALL')
-```
+DRF is **complementary** to generalized random forests and causal survival forests: whereas those methods principally target conditional treatment-effect estimation, DRF emphasizes **a small number of interpretable patient profiles** and statistical assessment of their treatment-effect differences.
 
-## Here, we load the pre-computed proximity.
+## Scope and Interpretation
 
-``` r
-data(proximity, package = "randomForestSRC")
-library(kernlab)  # we need kernlab package
-library(survival)
-```
+DRF is intended for randomized-trial subgroup research with right-censored survival outcomes. Its application relies on the assumptions described in the manuscript, including conditional noninformative censoring and Cox-based interaction assessment. The empirical Type I error findings are established for the studied settings and should not be interpreted as universal finite-sample guarantees. Any candidate patient profile requires independent clinical evaluation and appropriate validation before treatment decisions.
 
-``` r
-study_id = "309"
-data(crc_adsl, package = "randomForestSRC")
-dat <- base::subset(crc_adsl, crc_adsl$StudyID==study_id)
-dat <- dat[!is.na(dat$B_ECOG),]
-dat <- dat[!is.na(dat$KRAS),]
-dat <- dat[!is.na(dat$AGE),]
-dat$TRT <- as.factor(dat$TRT)
-data <- dat[, c("SUBJID","OS","OSevent","KRAS", "AGE", "TRT", "B_ECOG", "ARM", "PFS", "PFSevent")]  # TRT equals ARM
-train.data = data[, c("SUBJID", "OS", "OSevent", "KRAS", "AGE", "B_ECOG", "TRT", "PFS", "PFSevent","ARM")]
-  
-train.data$TRT = ifelse(train.data$TRT == "FOLFOX alone", yes = 0, no = 1)
-train.data$TRT = as.factor(train.data$TRT)
-train.data$KRAS <- as.factor(train.data$KRAS)
-train.data$B_ECOG <- as.factor(train.data$B_ECOG)
-train.data = train.data[train.data$B_ECOG%in%c(0,1),]
-train.data$B_ECOG <- as.factor(train.data$B_ECOG)
-x_name = c("KRAS","B_ECOG", "AGE")
-dat = train.data 
-```
+## Reference
 
-``` r
-
-
-W_mat <- as.kernelMatrix(as.matrix(proximity)) 
-
-sc2 <- specc(W_mat, centers = 2)
-clusters2 <- as.factor(as.integer(sc2))
-dat$kmeans2 = as.factor(clusters2)
-
-sc3 <- specc(W_mat, centers = 3)
-clusters3 <- as.factor(as.integer(sc3))
-dat$kmeans3 = as.factor(clusters3)
-
-sc4 <- specc(W_mat, centers = 4)
-clusters4 <- as.factor(as.integer(sc4))
-dat$kmeans4 = as.factor(clusters4)
-
-sc5 <- specc(W_mat, centers = 5)
-clusters5 <- as.factor(as.integer(sc5))
-dat$kmeans5 = as.factor(clusters5)
-
-pval_flag = 2
-result = list()
-
-for (j in 2:5){
-  x_name = c("B_ECOG","KRAS","AGE")
-  c_name = paste0("kmeans",j)
-  profiles <- tree_fit(Y=dat[,c_name], X=dat[,x_name], seed=1234,maxdepth = 2)
-  if(is.null(profiles)){
-    next
-  }
-  for (k in 1:length(profiles$trees)){
-    dat = predict_path(profiles$trees[[k]], newdata = dat)
-    
-    data_tmp = dat
-    ## calculate p leaf
-    fit_surv3 = coxph(Surv(OS,OSevent)~TRT, data = data_tmp)
-    fit_surv2 = coxph(Surv(OS,OSevent)~leaf*TRT, data = data_tmp)
-    pval = as.numeric(na.omit(stats::anova(fit_surv2, fit_surv3)[[4]]))
-    
-    if(pval < pval_flag){
-      pval_flag = pval
-      result[[1]] = profiles
-      result[[2]] = pval_flag
-      result[[3]] = j
-      result[[4]] = k
-    }
-  }
-}
-```
-
-### Visualize profile identified by dense random forests
-
-Each terminal node represents a discovered subgroup; the split variables
-and percentages indicate subgroup profiles.
-
-``` r
-plot_profile(result[[1]]$trees[[result[[4]]]])
-```
-
-![](README_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
-
-We use minimum $p_{leaf}$ to select best decision tree. The detailed
-definition can be found at <https://arxiv.org/abs/2505.17917> .
-
-``` r
-cat(result[[2]])
-#> 7.849685e-13
-```
-
-## Calibration
-
-We simulate NULL scenario by permute current data, then records the
-$p_{leaf}$, the following results are pre-computing results.
-
-``` r
-data("p_leaf_list", package = "randomForestSRC")
-```
-
-By comparing the data with the NULL scenario’s $p_{leaf}$, we can
-exclude non-heterogeneous cases. Here, we control the type I error rate
-at $1%$.
-
-``` r
-quantile(p_leaf_list,0.01)
-#>           1% 
-#> 0.0004303215
-```
-
-In study 309, the $p_{leaf}$ is smaller than calibration threshold, so
-there is heterogeneity. The subtype discovery result see the decision
-tree.
-
-## Contact
-
-**Xingyu Li**  
-Email: lxingyu1996@gmail.com
-
-## Paper link
-https://arxiv.org/abs/2601.01380
-
-## Acknowledgement
-The work was supported by Amgen Inc.
+Li, X., Liu, Q., Jiang, X., Xia, H. A., Wei, P., and Hobbs, B. P. **Dense random survival forests identify interpretable patient profiles with heterogeneous treatment benefit.** Manuscript under revision at the *Journal of the Royal Statistical Society: Series C (Applied Statistics)*.
