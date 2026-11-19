@@ -31,7 +31,7 @@ nodesize:Minimum terminal node size,
 
 nodedepth:Maximum tree depth,
 
-$\omega_2$: den parameter, please use $3.5$ as default value,
+$\omega_2$: parameter, $3.5$ as default value,
 
 $\omega_1$: weight parameter.
 
