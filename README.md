@@ -153,4 +153,17 @@ DRF is intended for randomized-trial subgroup research with right-censored survi
 
 ## Reference
 
-Li, X., Liu, Q., Jiang, X., Xia, H. A., Wei, P., and Hobbs, B. P. **Dense random survival forests identify interpretable patient profiles with heterogeneous treatment benefit.** Manuscript under revision at the *Journal of the Royal Statistical Society: Series C (Applied Statistics)*.
+Li, X., Liu, Q., Jiang, X., Xia, H. A., Wei, P., and Hobbs, B. P. **Dense random survival forests identify interpretable patient profiles with heterogeneous treatment benefit.** Manuscript under revision at the *Journal of the Royal Statistical Society: Series C (Applied Statistics)*. 
+
+
+## Contact
+
+**Xingyu Li**  
+Email: lxingyu1996@gmail.com
+
+## Paper link
+https://arxiv.org/abs/2601.01380
+
+## Acknowledgement
+The work was supported by Amgen Inc.
+
