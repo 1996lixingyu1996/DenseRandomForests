@@ -32,7 +32,7 @@ Each survival tree uses a proposed splitting score that combines **prognostic di
 
 $$
 G(s)=\omega_1 (\frac{C(s)}{0.5}-1)
-+(1-\omega_1)\min\!\{\frac{|Z_{\mathrm{int}}(s)|}{\omega_2},1\}.
++(1-\omega_1)\min(\{\frac{|Z_{\mathrm{int}}(s)|}{\omega_2},1\}).
 $$
 
 Here, $C(s)$ is the concordance index from the split-specific Cox model, $Z_{\mathrm{int}}(s)$ is the Wald statistic for the treatment-by-split interaction, $\omega_1$ balances the two components, and $\omega_2$ scales and truncates the interaction component. The reported analyses use $\omega_1=0.5$ and $\omega_2=3.5$.
@@ -47,23 +47,23 @@ This aggregation builds one ensemble representation from many different patient 
 
 ### 3. Construct treatment-informed patient similarity
 
-Patients are more similar when they repeatedly occupy the same terminal node across the aggregated ensemble. For $B$ total trees, the conventional all-sample proximity is
+Patients are more similar when they repeatedly occupy the same teral node across the aggregated ensemble. For $B$ total trees, the conventional all-sample proximity is
 
 $$
 S(i,j)=\frac{1}{B}\sum_{b=1}^{B}\mathbf{1}\{L_{ib}=L_{jb}\},
 $$
 
-where $L_{ib}$ is the terminal-node label for patient $i$ in tree $b$.
+where $L_{ib}$ is the teral-node label for patient $i$ in tree $b$.
 
 Because the forests were grown using a treatment-aware splitting criterion, the resulting proximity reflects **both clinical prognosis and treatment-response patterns**. The manuscript also considers joint out-of-bag (OOB) proximity to reduce direct reuse of patients in tree construction and pairwise similarity estimation.
 
 ### 4. Discover candidate subgroups using spectral clustering
 
-Spectral clustering uses the resulting proximity matrix to find patients with similar treatment-related survival patterns. Candidate numbers of clusters are examined rather than assuming one subgroup structure in advance.
+Spectral clustering uses the resulting proximity matrix to find patients with similar treatment-related survival patterns. Candidate numbers of clusters are exaed rather than assug one subgroup structure in advance.
 
 ### 5. Translate clusters into interpretable patient profiles
 
-A constrained classification tree predicts the cluster assignments from baseline covariates. Its terminal leaves provide explicit rules—such as age and prior treatment thresholds—that clinicians and researchers can inspect and communicate.
+A constrained classification tree predicts the cluster assignments from baseline covariates. Its teral leaves provide explicit rules—such as age and prior treatment thresholds—that clinicians and researchers can inspect and communicate.
 
 Importantly, these are **candidate profiles**. A visually persuasive tree does not establish treatment-effect heterogeneity.
 
