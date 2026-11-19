@@ -2,7 +2,7 @@ Dense Random Forest for Subgroup Analysis in Clinical Trial
 ================
 
 This file demonstrates how to use the Dense Random Forest (DRF) method for
-subgroup analysis. The HIV Trial ACTG 175 Phase 3 trial is used to illustrate the example.
+subgroup analysis. The HIV Trial ACTG 175 Phase 3 trial is used to illustrate the method.
 
 DRF extend traditional random forests by
 incorporating a model-based splitting criterion, enabling efficient
