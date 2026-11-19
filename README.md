@@ -50,7 +50,7 @@ This aggregation builds one ensemble representation from many different patient 
 Patients are more similar when they repeatedly occupy the same teral node across the aggregated ensemble. For $B$ total trees, the conventional all-sample proximity is
 
 $$
-S(i,j)=\frac{1}{B}\sum_{b=1}^{B}\mathbf{1}\{L_{ib}=L_{jb}\},
+S(i,j)=\frac{1}{B}\sum_{b=1}^{B}\mathbf{1}(\{L_{ib}=L_{jb}\}),
 $$
 
 where $L_{ib}$ is the teral-node label for patient $i$ in tree $b$.
